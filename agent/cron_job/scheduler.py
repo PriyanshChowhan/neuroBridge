@@ -1,0 +1,98 @@
+import schedule
+import threading
+import time
+from workflow.diagnose import trend_analysis_workflow
+from workflow.periodic_wellness_check import periodic_workflow
+from utils.constants import diagnosis_workflow_interval, periodic_wellness_workflow_interval
+from config.db import realtime_data_collection, daily_data_collection
+
+class WorkflowScheduler:
+    def __init__(self):
+        self.running = True
+        self.scheduler_thread = None
+
+    def run_diagnose_workflow(self):
+        """Run diagnose workflow with error handling"""
+        try:
+            print("Starting diagnose workflow...")
+            user_ids = set(realtime_data_collection.distinct("userId"))
+            user_ids.update(daily_data_collection.distinct("userId"))
+            for user_id in user_ids:
+                result = trend_analysis_workflow.invoke({"userId": user_id})
+                print(f"Diagnose workflow completed for {user_id}: {result.get('status', 'unknown')}")
+        except Exception as e:
+            print(f"Diagnose workflow failed: {e}")
+
+    def run_periodic_wellness_workflow(self):
+        """Run periodic wellness workflow with error handling"""
+        try:
+            print("Starting periodic wellness check...")
+            for user_id in realtime_data_collection.distinct("userId"):
+                result = periodic_workflow.invoke({"userId": user_id})
+                print(f"Periodic wellness check completed for {user_id}: {result.get('status', 'unknown')}")
+        except Exception as e:
+            print(f"Periodic wellness check failed: {e}")
+
+    def setup_schedules(self):
+        """Setup the scheduled jobs"""
+        # Schedule long-term diagnosis at the configured interval.
+        schedule.every(diagnosis_workflow_interval).minutes.do(self.run_diagnose_workflow)
+        print(f"Diagnose workflow scheduled (every {diagnosis_workflow_interval} minutes)")
+        
+        # Schedule the periodic wellness workflow at the configured interval.
+        schedule.every(periodic_wellness_workflow_interval).minutes.do(self.run_periodic_wellness_workflow)
+        print(f"Periodic wellness workflow scheduled (every {periodic_wellness_workflow_interval} minutes)")
+
+    def run_scheduler(self):
+        """Run the scheduler in a loop"""
+        while self.running:
+            schedule.run_pending()
+            time.sleep(1)  # Check every second
+
+    def start(self):
+        """Start the workflow scheduler"""
+        self.setup_schedules()
+        
+        # Run scheduler in a separate daemon thread
+        self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True, name="WorkflowScheduler")
+        self.scheduler_thread.start()
+        
+        print("Workflow scheduler started!")
+
+    def stop(self):
+        """Stop the workflow scheduler"""
+        print("Stopping workflow scheduler...")
+        self.running = False
+        
+        # Clear all scheduled jobs
+        schedule.clear()
+        
+        if self.scheduler_thread and self.scheduler_thread.is_alive():
+            self.scheduler_thread.join(timeout=2)
+        
+        print("Workflow scheduler stopped")
+
+    def get_scheduled_jobs(self):
+        """Print all scheduled jobs"""
+        jobs = schedule.get_jobs()
+        if jobs:
+            print("Scheduled Jobs:")
+            for job in jobs:
+                print(f"  - {job}")
+        else:
+            print("No scheduled jobs")
+
+# Global scheduler instance
+workflow_scheduler = WorkflowScheduler()
+
+def start_schedulers():
+    """Start the workflow schedulers"""
+    workflow_scheduler.start()
+
+def stop_schedulers():
+    """Stop the workflow schedulers"""
+    workflow_scheduler.stop()
+
+def show_scheduled_jobs():
+    """Show all scheduled jobs"""
+    workflow_scheduler.get_scheduled_jobs()

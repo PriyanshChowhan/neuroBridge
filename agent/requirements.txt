@@ -1,0 +1,13 @@
+python-socketio
+requests
+websocket-client
+pymongo[srv]
+dotenv
+pydantic
+
+langgraph
+langchain
+langchain-core
+langchain-google-genai
+
+schedule
