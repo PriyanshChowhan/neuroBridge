@@ -3,7 +3,6 @@ import dotenv from "dotenv"
 dotenv.config();
 const MONGO_URI = process.env.MONGO_URI;
 
-// EXPORT DEFAULT FUNCTION
 const MONGODB = async () => {
     if (!MONGO_URI) {
         throw new Error("Missing required environment variable: MONGO_URI");

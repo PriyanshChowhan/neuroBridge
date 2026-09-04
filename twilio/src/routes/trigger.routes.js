@@ -189,7 +189,7 @@ ${convoText}
 /* ---------- Routes ---------- */
 
 /**
- * Trigger call (unchanged)
+ * Trigger call 
  */
 router.get("/trigger-call", async (req, res) => {
   try {

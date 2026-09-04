@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-// Based on your personal.controllers.js, the schema should look like this.
 const personalSchema = new Schema(
     {
         userId: {
@@ -19,9 +18,6 @@ const personalSchema = new Schema(
         consentGiven: { type: Boolean, default: false }
     }, {
         timestamps: true,
-        // This is the final, crucial fix.
-        // It forces this model to use the 'personals' collection
-        // inside your 'health_data_db' database.
         collection: 'personals'
     }
 );

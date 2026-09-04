@@ -28,6 +28,8 @@ export const getDailyDashboardData = async (req, res) => {
                 $group: {
                     _id: null, // Group all documents for the day into one
                     avgHeartRate: { $avg: '$heart_rate' },
+                    avgSystolic: { $avg: '$blood_pressure.systolic' },
+                    avgDiastolic: { $avg: '$blood_pressure.diastolic' },
                     // Assuming 'steps' is a cumulative count for the day, we take the max value.
                     // If steps are incremental, you would use $sum instead.
                     totalSteps: { $max: '$steps' } 
@@ -40,7 +42,12 @@ export const getDailyDashboardData = async (req, res) => {
         // 3. Format the response to match the dashboard
         const dashboardData = {
             heartRate: realtimeData.avgHeartRate == null ? null : Math.round(realtimeData.avgHeartRate),
-            bloodPressure: null,
+            bloodPressure: realtimeData.avgSystolic == null || realtimeData.avgDiastolic == null
+                ? null
+                : {
+                    systolic: Math.round(realtimeData.avgSystolic),
+                    diastolic: Math.round(realtimeData.avgDiastolic),
+                },
             sleep: {
                 hours: sleepData ? Math.floor(sleepData.sleep.duration / 60) : null,
                 minutes: sleepData ? sleepData.sleep.duration % 60 : null,

@@ -5,12 +5,16 @@ const realtimeDataSchema = new mongoose.Schema({
     heart_rate: { type: Number, required: true },
     spo2: { type: Number },
     stress_level: { type: Number },
+    blood_pressure: {
+        systolic: { type: Number },
+        diastolic: { type: Number },
+    },
     steps: { type: Number },
     calories_burned: { type: Number },
     timestamp: { type: Date, required: true },
 }, {
     timestamps: true,
-    collection: "realtime_data"   // 🔥 important
+    collection: "realtime_data"   
 });
 
 realtimeDataSchema.index(

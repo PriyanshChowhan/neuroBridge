@@ -31,6 +31,7 @@ import { API } from "../api/api";
 
 interface RealtimeReading {
   heart_rate: number;
+  blood_pressure?: { systolic: number; diastolic: number };
   spo2: number;
   stress_level: number;
 }
@@ -56,6 +57,9 @@ export default function HeartHealth() {
   }, []);
 
   const heartRate = data?.heart_rate ?? "—";
+  const bloodPressure = data?.blood_pressure
+    ? `${data.blood_pressure.systolic}/${data.blood_pressure.diastolic}`
+    : "—";
   const spo2 = data?.spo2 ?? "—";
   const stress = data?.stress_level ?? "—";
   const isHighRisk =
@@ -132,8 +136,8 @@ export default function HeartHealth() {
               <CardTitle>Blood Pressure</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">Unavailable</p>
-              <p className="text-sm text-muted-foreground">No connected blood-pressure sensor</p>
+              <p className="text-4xl font-bold">{bloodPressure}</p>
+              <p className="text-sm text-muted-foreground">mmHg</p>
             </CardContent>
           </Card>
 

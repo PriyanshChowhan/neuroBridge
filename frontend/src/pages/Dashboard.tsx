@@ -37,6 +37,7 @@ interface BucketGroup {
 
 interface RealtimeReading {
   heart_rate: number;
+  blood_pressure?: { systolic: number; diastolic: number };
   steps: number;
   timestamp: string;
 }
@@ -247,6 +248,9 @@ export default function Dashboard() {
   // ----------------- Realtime / Latest UI values -----------------
 
   const heartRateValue = latestRealtime?.heart_rate ?? "—";
+  const bloodPressureValue = latestRealtime?.blood_pressure
+    ? `${latestRealtime.blood_pressure.systolic}/${latestRealtime.blood_pressure.diastolic}`
+    : "—";
   const stepsValue = latestRealtime?.steps ?? "—";
 
   const sleepMins = latestDaily?.sleep?.duration;
@@ -327,8 +331,8 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm">Blood Pressure</p>
-                      <p className="text-2xl font-bold">Unavailable</p>
-                      <p className="text-xs text-muted-foreground">No connected sensor</p>
+                      <p className="text-2xl font-bold">{bloodPressureValue}</p>
+                      <p className="text-xs text-muted-foreground">mmHg</p>
                     </div>
                     <Activity className="w-8 h-8 text-green-500" />
                   </div>

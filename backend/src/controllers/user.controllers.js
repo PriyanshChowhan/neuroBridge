@@ -1,33 +1,21 @@
 import { asynchandler } from "../utils/asynchandler.js";
 import { User } from "../models/user.js";
 
-/**
- * @description Generates access and refresh tokens for a user
- * @param {string} userId - The ID of the user
- * @returns {object} - An object containing the access and refresh tokens
- */
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId);
-        const accessToken = user.accessToken(); // Corrected method name to match convention
-        const refreshToken = user.RefreshToken(); // Assuming this is correct from your model
+        const accessToken = user.accessToken(); 
+        const refreshToken = user.RefreshToken(); 
 
         user.refreshToken = refreshToken;
-        // The `validateBeforeSave: false` is okay here since we are only updating the token, not user input.
         await user.save({ validateBeforeSave: false });
 
         return { accessToken, refreshToken };
     } catch (error) {
-        // This will be caught by asynchandler
         throw new Error("Token generation failed. Please try again.");
     }
 };
 
-/**
- * @description Sets tokens as secure, httpOnly cookies in the response
- * @param {object} res - The Express response object
- * @param {object} tokens - Object containing accessToken and refreshToken
- */
 const setTokenCookies = (res, tokens) => {
     const options = {
         httpOnly: true,
@@ -38,13 +26,12 @@ const setTokenCookies = (res, tokens) => {
     res.cookie("refreshToken", tokens.refreshToken, options);
 };
 
-// --- CONTROLLER FUNCTIONS ---
 
 const registerUser = asynchandler(async (req, res) => {
     let { username, emailId, password, phoneNumber } = req.body;
 
     if ([username, emailId, password].some((field) => !field || field.trim() === "")) {
-        return res.status(400).json({ // 400 Bad Request is more appropriate
+        return res.status(400).json({
             success: false,
             message: "All fields are required"
         });
@@ -56,7 +43,7 @@ const registerUser = asynchandler(async (req, res) => {
     });
 
     if (existedUser) {
-        return res.status(409).json({ // 409 Conflict is the correct code for an existing resource
+        return res.status(409).json({
             success: false,
             message: "User with this username or email already exists"
         });
@@ -69,21 +56,19 @@ const registerUser = asynchandler(async (req, res) => {
         phoneNumber,
     });
 
-    // We get the created user back from the DB, excluding sensitive fields
     const createdUser = await User.findById(user._id).select("-password -refreshToken");
 
     if (!createdUser) {
-        return res.status(500).json({ // 500 for a server error where creation failed unexpectedly
+        return res.status(500).json({ 
             success: false,
             message: "Something went wrong while registering the user."
         });
     }
 
-    // --- Improvement: Log the user in immediately after registration ---
     const tokens = await generateAccessAndRefreshToken(createdUser._id);
     setTokenCookies(res, tokens);
 
-    return res.status(201).json({ // 201 Created is the correct status for a new resource
+    return res.status(201).json({ 
         success: true,
         message: "User registered and logged in successfully",
         data: {
@@ -93,11 +78,10 @@ const registerUser = asynchandler(async (req, res) => {
 });
 
 const loginUser = asynchandler(async (req, res) => {
-    // Only emailId and password are required for login based on your logic
     let { emailId, password } = req.body;
 
     if (!emailId || !password) {
-        return res.status(400).json({ // 400 Bad Request
+        return res.status(400).json({ 
             success: false,
             message: "Email and password are required"
         });
@@ -107,7 +91,7 @@ const loginUser = asynchandler(async (req, res) => {
     const user = await User.findOne({ emailId });
 
     if (!user) {
-        return res.status(404).json({ // 404 Not Found is correct here
+        return res.status(404).json({ 
             success: false,
             message: "User does not exist"
         });
@@ -116,7 +100,7 @@ const loginUser = asynchandler(async (req, res) => {
     const isPasswordValid = await user.isPasswordCorrect(password);
 
     if (!isPasswordValid) {
-        return res.status(401).json({ // 401 Unauthorized for incorrect credentials
+        return res.status(401).json({ 
             success: false,
             message: "Invalid user credentials"
         });
@@ -125,7 +109,6 @@ const loginUser = asynchandler(async (req, res) => {
     const tokens = await generateAccessAndRefreshToken(user._id);
     setTokenCookies(res, tokens);
 
-    // Send back user data so the frontend can update its state
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
 
     return res.status(200).json({

@@ -7,7 +7,8 @@ import dotenv from "dotenv";
 
 dotenv.config()
 
-const patientUserId = process.env.PATIENT_USER_ID;
+const patientUserId = process.env.PATIENT_USER_ID?.trim();
+
 if (!patientUserId) {
     console.error("Missing required environment variable: PATIENT_USER_ID");
     process.exit(1);
@@ -34,26 +35,21 @@ let overrideData = null;
 // --- Incremental counters ---
 let stepCount = 0;
 let calorieCount = 0;
-let counterDay = new Date().toISOString().slice(0, 10);
 
 // Utility
 function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function resetDailyCountersIfNeeded() {
-    const today = new Date().toISOString().slice(0, 10);
-    if (today !== counterDay) {
-        stepCount = 0;
-        calorieCount = 0;
-        counterDay = today;
-    }
+function generateBloodPressure() {
+    return {
+        systolic: random(105, 130),
+        diastolic: random(65, 85),
+    };
 }
 
 // ---- REALTIME DATA ----
 function generateRealtimeData() {
-    resetDailyCountersIfNeeded();
-
     if (overrideData) {
         return {
             ...overrideData,
@@ -64,27 +60,26 @@ function generateRealtimeData() {
         };
     }
 
-    // Incremental updates
-    stepCount += random(5, 20); // steps increase gradually
-    calorieCount += random(1, 5); // calories burned
+    stepCount += random(5, 20);
+    calorieCount += random(1, 5);
 
     return {
         userId: patientUserId,
         heart_rate: random(60, 100),
         spo2: random(95, 100),
         stress_level: random(1, 5),
+        blood_pressure: generateBloodPressure(),
         steps: stepCount,
         calories_burned: calorieCount,
         timestamp: Date.now(),
     };
 }
-
 // ---- DAILY DATA ----
 function generateDailyData() {
     return {
         userId: patientUserId,
         sleep: {
-            duration: random(300, 500), // minutes slept
+            duration: random(300, 500),
             quality: ["good", "average", "poor"][random(0, 2)],
             start: Date.now() - 8 * 60 * 60 * 1000,
             end: Date.now(),
@@ -95,41 +90,53 @@ function generateDailyData() {
             carbs: random(150, 300),
             fat: random(40, 90),
         },
-        water_intake: (Math.random() * 3).toFixed(1), // liters
+        water_intake: (Math.random() * 3).toFixed(1),
         energy_score: random(50, 95),
         timestamp: Date.now(),
     };
 }
 
+let latestRealtimeData = null;
+let latestDailyData = null;
+
+setInterval(() => {
+    latestRealtimeData = generateRealtimeData();
+    io.emit("realtimeData", latestRealtimeData);
+}, realtimeDataInterval);
+
+setInterval(() => {
+    latestDailyData = generateDailyData();
+    io.emit("dailyData", latestDailyData);
+}, dailyDataInterval);
+
 // WebSocket (Socket.IO) connection
 io.on("connection", (socket) => {
     console.log("Client connected:", socket.id);
+
+    // Send the most recent reading immediately so a late-joining client
+    // (e.g. the agent restarting) doesn't wait up to a full interval before
+    // seeing any data.
+    if (latestRealtimeData) socket.emit("realtimeData", latestRealtimeData);
+    if (latestDailyData) socket.emit("dailyData", latestDailyData);
 
     socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id);
     });
 });
 
-// Generate each reading once and broadcast it so extra clients do not inflate counters.
-setInterval(() => {
-    io.emit("realtimeData", generateRealtimeData());
-}, realtimeDataInterval);
-
-setInterval(() => {
-    io.emit("dailyData", generateDailyData());
-}, dailyDataInterval);
-
 // Override API
 app.post("/override", (req, res) => {
-    const { heart_rate, spo2, stress_level } = req.body;
+    const { heart_rate, spo2, stress_level, blood_pressure } = req.body;
 
     overrideData = {
         heart_rate: heart_rate ?? random(60, 100),
         spo2: spo2 ?? random(95, 100),
         stress_level: stress_level ?? random(1, 5),
+        blood_pressure: blood_pressure ?? generateBloodPressure(),
     };
 
     const emittedOverride = generateRealtimeData();
+
     io.emit("overrideSet", emittedOverride);
     res.json({ status: "override set", data: emittedOverride });
 });

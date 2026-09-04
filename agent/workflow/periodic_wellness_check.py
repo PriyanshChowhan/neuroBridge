@@ -17,6 +17,7 @@ load_dotenv()
 
 TWILIO_SERVICE_URL = os.getenv("TWILIO_SERVICE_URL", "http://localhost:3000").rstrip("/")
 REQUEST_TIMEOUT = (5, 20)
+ENABLE_ROUTINE_WELLNESS_SMS = os.getenv("ENABLE_ROUTINE_WELLNESS_SMS", "false").lower() == "true"
 
 model = init_chat_model(model="gemini-3.1-flash-lite", model_provider="google_genai")
 
@@ -35,6 +36,9 @@ class State(TypedDict, total=False):
 
 # ---- NODES ----
 def aggregate_data(state: State):
+    # Routine wellness messages are opt-in so normal readings do not create unwanted SMS.
+    if not ENABLE_ROUTINE_WELLNESS_SMS:
+        return {"status": "disabled"}
 
     # Calculate 5 minutes ago
     three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=3)
